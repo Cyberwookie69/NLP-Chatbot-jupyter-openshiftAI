@@ -625,9 +625,10 @@ def run_evaluation(
 if __name__ == "__main__":
     from config import CONFIG, set_seed
     from logging_utils import setup_run_logging
+    from gpu_utils import setup_device
     setup_run_logging("evaluate", log_dir=CONFIG.get("log_dir", "new/logs"))
     set_seed(CONFIG.get("seed", 42))
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device, gpu_info = setup_device()
     run_evaluation(
         checkpoint_dir=CONFIG["checkpoint_dir"],
         artifact_dir=CONFIG["artifact_dir"],

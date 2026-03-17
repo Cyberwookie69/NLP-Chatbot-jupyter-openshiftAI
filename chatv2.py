@@ -464,9 +464,10 @@ def main():
                         help="clear=each question independent (default); multi=rolling history")
     args = parser.parse_args()
 
+    from gpu_utils import setup_device
     ckpt_dir  = Path(args.checkpoint_dir)
     art_dir   = Path(args.artifact_dir)
-    device    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device, _ = setup_device()
 
     print(f"\nDevice         : {device}")
     print(f"Checkpoint dir : {ckpt_dir}")

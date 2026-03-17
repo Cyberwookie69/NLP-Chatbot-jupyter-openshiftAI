@@ -526,7 +526,8 @@ def main(cfg: Dict = None) -> None:
         cfg["num_workers"]     = 0
         cfg["batch_size"]      = 64
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    from gpu_utils import setup_device
+    device, gpu_info = setup_device()
     print(f"\n[evaluate_mini] Device: {device}")
     print(f"[evaluate_mini] artifact_dir  : {cfg['artifact_dir']}")
     print(f"[evaluate_mini] checkpoint_dir: {cfg['checkpoint_dir']}")

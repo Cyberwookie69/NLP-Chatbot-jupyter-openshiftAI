@@ -57,6 +57,7 @@ from torch.utils.tensorboard import SummaryWriter
 from config import CONFIG, get_tf_ratio, set_seed
 from dataset import build_dataloaders
 from models import build_model
+from gpu_utils import setup_device, auto_scale_config, wrap_model, unwrap_model
 
 # bf16 does not underflow like fp16 — GradScaler is not needed.
 # torch.amp.autocast with dtype=torch.bfloat16 is sufficient.
@@ -193,7 +194,7 @@ def train_epoch(
                     {
                         "epoch": epoch,
                         "global_step": global_step,
-                        "model_state_dict": model.state_dict(),
+                        "model_state_dict": unwrap_model(model).state_dict(),
                         "optimizer_state": optimizer.state_dict(),
                         "scheduler_state": scheduler.state_dict(),
                         "train_loss_so_far": total_loss / max(n_updates, 1),
@@ -334,7 +335,7 @@ def build_optimizer_and_scheduler(
     return optimizer, scheduler
 
 
-def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str, List]:
+def train_model(model_type: str, config: dict, device: torch.device, gpu_info=None) -> Dict[str, List]:
     """
     Full training run for one model_type ("baseline" or "attention").
 
@@ -342,6 +343,10 @@ def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str
       {checkpoint_dir}/{model_type}_best.pt      — best val-loss checkpoint (atomic)
       {checkpoint_dir}/{model_type}_step_{n}.pt  — periodic checkpoints (atomic)
       {checkpoint_dir}/{model_type}_history.json — training history
+
+    Args:
+        gpu_info: GPUInfo from gpu_utils.setup_device(). If provided and num_gpus > 1,
+                  the model is wrapped in DataParallel for multi-GPU training.
 
     Returns:
         List of per-epoch history dicts.
@@ -366,6 +371,10 @@ def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str
     model = build_model(model_type, config, device)
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"\n[{model_type}] Trainable parameters: {num_params:,}")
+
+    # ── 2b. Multi-GPU wrapping ────────────────────────────────────────────────
+    if gpu_info is not None:
+        model = wrap_model(model, gpu_info)
 
     # ── 3. Optimizer + scheduler ──────────────────────────────────────────────
     # total_steps must be computed AFTER building the dataloader so we know
@@ -412,7 +421,7 @@ def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str
     if resume_path:
         print(f"[{model_type}] Resuming from {resume_path}")
         ckpt = torch.load(resume_path, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt["model_state_dict"])
+        unwrap_model(model).load_state_dict(ckpt["model_state_dict"])
         optimizer.load_state_dict(ckpt["optimizer_state"])
         scheduler.load_state_dict(ckpt["scheduler_state"])
         best_val_loss = ckpt.get("val_loss", float("inf"))
@@ -486,7 +495,7 @@ def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str
                 "epoch": epoch,
                 "global_step": global_step,
                 "model_type": model_type,
-                "model_state_dict": model.state_dict(),
+                "model_state_dict": unwrap_model(model).state_dict(),
                 "optimizer_state": optimizer.state_dict(),
                 "scheduler_state": scheduler.state_dict(),
                 "val_loss": val_loss,
@@ -526,7 +535,7 @@ def train_model(model_type: str, config: dict, device: torch.device) -> Dict[str
                         "epoch": epoch,
                         "global_step": global_step,
                         "model_type": model_type,
-                        "model_state_dict": model.state_dict(),
+                        "model_state_dict": unwrap_model(model).state_dict(),
                         "optimizer_state": optimizer.state_dict(),
                         "scheduler_state": scheduler.state_dict(),
                         "val_loss": val_loss,
@@ -593,7 +602,8 @@ def main(cfg: dict = None, script_name: str = "train") -> None:
     # AC2-C1: set all random seeds for full reproducibility.
     set_seed(active_cfg.get("seed", 42))
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device, gpu_info = setup_device()
+    active_cfg = auto_scale_config(active_cfg, gpu_info)
     print(f"Device: {device}")
 
     os.makedirs(active_cfg["checkpoint_dir"], exist_ok=True)
@@ -625,7 +635,7 @@ def main(cfg: dict = None, script_name: str = "train") -> None:
     print("\n" + "=" * 70)
     print("  TRAINING: baseline (no attention)")
     print("=" * 70)
-    baseline_history = train_model("baseline", active_cfg, device)
+    baseline_history = train_model("baseline", active_cfg, device, gpu_info)
 
     # ── Separator ────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
@@ -633,7 +643,7 @@ def main(cfg: dict = None, script_name: str = "train") -> None:
     print("=" * 70)
 
     # ── Attention ─────────────────────────────────────────────────────────────
-    attention_history = train_model("attention", active_cfg, device)
+    attention_history = train_model("attention", active_cfg, device, gpu_info)
 
     print("\nTraining complete.")
     print(f"  Baseline  best val loss : {min(baseline_history['val_loss']):.4f}")
