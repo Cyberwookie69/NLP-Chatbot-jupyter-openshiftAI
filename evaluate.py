@@ -1,6 +1,9 @@
 """
 evaluate.py — Full evaluation suite for both Seq2Seq models.
 
+Version : 3.2.0
+Date    : 2026-03-18
+
 Produces per run:
   - bleu_results.json        BLEU-1/2/3/4 (sacrebleu 13a) + ROUGE-L + Distinct-1/2 + BERTScore
   - baseline_manual_samples.json
@@ -31,7 +34,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-import sentencepiece as spm
+from tokenizer_utils import load_tokenizer
 import sacrebleu
 from rouge_score import rouge_scorer
 import bert_score
@@ -227,7 +230,7 @@ def compute_distinct_n(sequences: List[List[int]], n: int) -> float:
     return len(unique) / max(total, 1)
 
 
-def _ids_to_str(ids: List[int], sp: spm.SentencePieceProcessor) -> str:
+def _ids_to_str(ids: List[int], sp: object) -> str:
     """Decode BPE IDs to a detokenised string, skipping special tokens."""
     return sp.decode(ids)
 
@@ -239,7 +242,7 @@ def _ids_to_str(ids: List[int], sp: spm.SentencePieceProcessor) -> str:
 def compute_bleu_corpus(
     model,
     loader,
-    sp: spm.SentencePieceProcessor,
+    sp: object,
     device: torch.device,
     max_len: int = 40,
     sos_idx: int = 2,
@@ -349,7 +352,7 @@ def compute_bleu_corpus(
 def manual_evaluation_samples(
     model,
     loader,
-    sp: spm.SentencePieceProcessor,
+    sp: object,
     device: torch.device,
     num_samples: int = 50,
     decode_strategy: str = "top_p",
@@ -418,7 +421,7 @@ def manual_evaluation_samples(
 def plot_attention_heatmap(
     model,
     src_ids: List[int],
-    sp: spm.SentencePieceProcessor,
+    sp: object,
     device: torch.device,
     save_path: str,
     sos_idx: int = 2,
@@ -522,10 +525,8 @@ def run_evaluation(
     artifact_dir = Path(artifact_dir)
     checkpoint_dir = Path(checkpoint_dir)
 
-    # Load SPM processor.
-    sp = spm.SentencePieceProcessor(
-        model_file=str(artifact_dir / "stage5_spm.model")
-    )
+    # Load tokenizer (HF Tokenizers or SentencePiece fallback).
+    sp = load_tokenizer(artifact_dir)
 
     # Build test dataloader only (no word2idx needed — dataset reads JSONL IDs directly).
     _, _, test_loader = build_dataloaders(

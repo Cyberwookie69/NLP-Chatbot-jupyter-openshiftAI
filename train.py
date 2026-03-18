@@ -1,6 +1,9 @@
 """
 train.py — Training loop for clean-from-scratch Seq2Seq chatbot.
 
+Version : 3.2.0
+Date    : 2026-03-18
+
 Trains both "baseline" (no attention) and "attention" (Bahdanau) models.
 Both models are trained with identical hyperparameters — the only difference
 is the attention mechanism — providing a controlled apples-to-apples ablation.
@@ -375,6 +378,14 @@ def train_model(model_type: str, config: dict, device: torch.device, gpu_info=No
     # ── 2b. Multi-GPU wrapping ────────────────────────────────────────────────
     if gpu_info is not None:
         model = wrap_model(model, gpu_info)
+
+    # ── 2c. torch.compile for kernel fusion speedup ──────────────────────────
+    if hasattr(torch, "compile") and device.type == "cuda":
+        try:
+            model = torch.compile(model)
+            print(f"[{model_type}] torch.compile enabled")
+        except Exception as e:
+            print(f"[{model_type}] torch.compile skipped: {e}")
 
     # ── 3. Optimizer + scheduler ──────────────────────────────────────────────
     # total_steps must be computed AFTER building the dataloader so we know

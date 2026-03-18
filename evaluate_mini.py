@@ -1,6 +1,9 @@
 """
 evaluate_mini.py — Lightweight evaluation of mini-trained Seq2Seq models.
 
+Version : 3.2.0
+Date    : 2026-03-18
+
 Designed to run automatically after train_mini.py, but can also be called
 directly. Produces a 3-layer analysis:
 
@@ -532,14 +535,10 @@ def main(cfg: Dict = None) -> None:
     print(f"[evaluate_mini] artifact_dir  : {cfg['artifact_dir']}")
     print(f"[evaluate_mini] checkpoint_dir: {cfg['checkpoint_dir']}")
 
-    # ── Load SentencePiece ───────────────────────────────────────────────────
-    import sentencepiece as spm
-    sp = spm.SentencePieceProcessor()
-    spm_path = Path(cfg["artifact_dir"]) / "stage5_spm.model"
-    if not spm_path.exists():
-        spm_path = Path(cfg.get("spm_model_path", ""))
-    sp.load(str(spm_path))
-    print(f"[evaluate_mini] SPM loaded from {spm_path}")
+    # ── Load tokenizer ────────────────────────────────────────────────────
+    from tokenizer_utils import load_tokenizer
+    sp = load_tokenizer(cfg["artifact_dir"])
+    print(f"[evaluate_mini] Tokenizer loaded from {cfg['artifact_dir']}")
 
     # ── Build test loader ────────────────────────────────────────────────────
     _, _, test_loader = build_dataloaders(

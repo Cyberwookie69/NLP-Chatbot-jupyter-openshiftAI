@@ -1,5 +1,8 @@
 """
-check_embedding.py — Extensive embedding test suite.
+check_embedding.py — Standalone embedding validation tool.
+
+Version : 3.2.0
+Date    : 2026-03-18
 
 Tests 8 categories in sequence:
   A. Matrix file integrity         (shape, dtype, NaN/Inf, norm stats)
@@ -30,7 +33,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-import sentencepiece as spm
+from tokenizer_utils import load_tokenizer
 
 # ── ensure new/ is on path ────────────────────────────────────────────────────
 _HERE = Path(__file__).resolve().parent
@@ -200,7 +203,7 @@ def section_a(mat: np.ndarray, vocab_size: int, embed_dim: int) -> None:
 # SECTION B — SPM ↔ matrix alignment
 # ─────────────────────────────────────────────────────────────────────────────
 
-def section_b(mat: np.ndarray, sp: spm.SentencePieceProcessor) -> None:
+def section_b(mat: np.ndarray, sp: object) -> None:
     S = "B"
     header("B. SPM ↔ Matrix Alignment")
 
@@ -508,7 +511,7 @@ def section_f(cfg: dict, device: torch.device) -> None:
 # SECTION G — Semantic sanity (cosine similarity)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def section_g(mat: np.ndarray, sp: spm.SentencePieceProcessor) -> None:
+def section_g(mat: np.ndarray, sp: object) -> None:
     S = "G"
     header("G. Semantic Sanity (Cosine Similarity)")
 
@@ -746,9 +749,8 @@ def main() -> int:
     mat = np.load(matrix_path).astype(np.float32)
     print(f"\n  Matrix loaded: shape={mat.shape} dtype={mat.dtype}")
 
-    sp_proc = spm.SentencePieceProcessor()
-    sp_proc.load(spm_path)
-    print(f"  SPM loaded: vocab_size={sp_proc.get_piece_size()}")
+    sp_proc = load_tokenizer(artifact_dir)
+    print(f"  Tokenizer loaded: vocab_size={sp_proc.get_piece_size()}")
 
     # ── Run all sections ──────────────────────────────────────────────────────
     try:

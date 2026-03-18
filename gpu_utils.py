@@ -1,7 +1,10 @@
 """
 gpu_utils.py — Multi-GPU utilities for OpenShift AI / CUDA clusters.
 
-Supports 1–4 A100 GPUs (or any CUDA device) with automatic detection and
+Version : 3.2.0
+Date    : 2026-03-18
+
+Supports 1-4 A100 GPUs (or any CUDA device) with automatic detection and
 batch size scaling. Designed for environments where GPU count and type are
 not known in advance.
 
@@ -72,7 +75,7 @@ def setup_device(prefer_gpu: int = -1) -> Tuple[torch.device, "GPUInfo"]:
     for i in range(num_gpus):
         props = torch.cuda.get_device_properties(i)
         info.gpu_names.append(props.name)
-        mem_gb = props.total_mem / (1024 ** 3)
+        mem_gb = props.total_memory / (1024 ** 3)
         info.total_memory_gb.append(mem_gb)
 
     info.is_a100 = any("A100" in name for name in info.gpu_names)
@@ -115,11 +118,12 @@ def auto_scale_config(config: dict, gpu_info: GPUInfo) -> dict:
     base_batch = cfg.get("batch_size", 256)
 
     # A100 80GB can handle much larger batches than consumer GPUs.
+    # Model is ~44M params LSTM — VRAM usage is dominated by batch size.
     min_vram = min(gpu_info.total_memory_gb) if gpu_info.total_memory_gb else 0
     if min_vram >= 70:       # A100 80GB
-        per_gpu_batch = 512
+        per_gpu_batch = 1024
     elif min_vram >= 35:     # A100 40GB / A6000
-        per_gpu_batch = 384
+        per_gpu_batch = 512
     elif min_vram >= 20:     # RTX 3090 / 4090
         per_gpu_batch = 256
     else:
@@ -135,7 +139,7 @@ def auto_scale_config(config: dict, gpu_info: GPUInfo) -> dict:
     if gpu_info.num_gpus >= 2:
         cfg["num_workers"] = min(gpu_info.num_gpus * 4, 16)
     elif gpu_info.num_gpus == 1:
-        cfg["num_workers"] = 4
+        cfg["num_workers"] = 8
     print(f"[gpu_utils] num_workers: {config.get('num_workers', 0)} → {cfg['num_workers']}")
 
     # AMP dtype: bf16 if supported (A100, H100, RTX 30xx+), else fp16.

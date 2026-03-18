@@ -1,5 +1,8 @@
 """
-chatv2.py — Dual-model comparison chat with greedy / top-p / beam decoding.
+chatv2.py — CLI dual-model comparison chat with greedy / top-p / beam decoding.
+
+Version : 3.2.0
+Date    : 2026-03-18
 
 Loads baseline and attention models simultaneously and shows both responses
 side by side.  If checkpoints are not specified via CLI, presents an
@@ -28,7 +31,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-import sentencepiece as spm
+from tokenizer_utils import load_tokenizer
 
 from config import CONFIG
 from models import build_model
@@ -483,15 +486,9 @@ def main():
         print("\nNo checkpoints found. Train the models first with: python train.py")
         sys.exit(1)
 
-    # ── Load SentencePiece ────────────────────────────────────────────────
-    sp_path = art_dir / "stage5_spm.model"
-    if not sp_path.exists():
-        raise FileNotFoundError(
-            f"SPM model not found: {sp_path}\n"
-            "Run phase1.py first to generate artifacts."
-        )
-    sp_processor = spm.SentencePieceProcessor(model_file=str(sp_path))
-    print(f"\nSPM loaded     : {sp_path}")
+    # ── Load tokenizer ────────────────────────────────────────────────────
+    sp_processor = load_tokenizer(art_dir)
+    print(f"\nTokenizer loaded from: {art_dir}")
 
     # ── Load models ───────────────────────────────────────────────────────
     models: Dict[str, torch.nn.Module] = {}

@@ -1,7 +1,10 @@
 """
 config.py — Single source of truth for all hyperparameters and paths.
 
-Every other file in new/ imports from here. No magic numbers anywhere else.
+Version : 3.2.0
+Date    : 2026-03-18
+
+Every other file imports from here. No magic numbers anywhere else.
 
 Implementation notes:
 - CONFIG is a plain dict (not a dataclass) for easy JSON serialisation
@@ -48,8 +51,8 @@ _TRAINING = {
     "learning_rate":         3e-4,    # peak LR (reached after warmup; cosine decays from here)
     "weight_decay":          1e-5,    # L2 regularisation
     "max_grad_norm":         1.0,     # gradient clipping threshold (gentler than 0.5)
-    "batch_size":            256,     # per-step batch size
-    "grad_accum_steps":      2,       # effective batch = batch_size × grad_accum_steps = 512
+    "batch_size":            1024,    # per-step batch size (A100 80GB has ample VRAM)
+    "grad_accum_steps":      1,       # effective batch = batch_size × 1 = 1024
     "num_epochs":            20,      # total training epochs
     "amp_dtype":             "bfloat16",  # automatic mixed precision dtype
     "patience":              4,       # early stopping patience (0 = disabled); monitoring
@@ -177,8 +180,8 @@ def set_seed(seed: int = 42) -> None:
     import torch as _torch
     _torch.manual_seed(seed)
     _torch.cuda.manual_seed_all(seed)
-    _torch.backends.cudnn.deterministic = True
-    _torch.backends.cudnn.benchmark = False
+    _torch.backends.cudnn.deterministic = False
+    _torch.backends.cudnn.benchmark = True   # auto-tune LSTM/conv kernels for ~10% speedup
 
 def get_tf_ratio(epoch: int, config: dict) -> float:
     """Return the teacher-forcing ratio for a given 1-indexed epoch.

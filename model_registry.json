@@ -1,0 +1,20 @@
+[
+  {
+    "id": "baseline_ubuntu_v1",
+    "name": "Baseline (Ubuntu)",
+    "architecture": "baseline",
+    "checkpoint": "checkpoints/baseline_best.pt",
+    "tokenizer": "artifacts/stage5_spm.model",
+    "dataset": "Ubuntu Dialogue Corpus",
+    "description": "Seq2Seq without attention, BPE 16k vocab, Word2Vec 300d"
+  },
+  {
+    "id": "attention_ubuntu_v1",
+    "name": "Attention (Ubuntu)",
+    "architecture": "attention",
+    "checkpoint": "checkpoints/attention_best.pt",
+    "tokenizer": "artifacts/stage5_spm.model",
+    "dataset": "Ubuntu Dialogue Corpus",
+    "description": "Bahdanau attention, BPE 16k vocab, Word2Vec 300d"
+  }
+]

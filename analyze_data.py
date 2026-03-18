@@ -1,7 +1,10 @@
 """
 analyze_data.py — Phase 1 artifact quality analysis.
 
-Runs programmatically by the data analyst agent (or standalone).
+Version : 3.2.0
+Date    : 2026-03-18
+
+Standalone data quality analysis tool.
 Checks every stage artifact for statistical health, data dominance,
 quality issues, and coverage gaps.
 

@@ -1,6 +1,9 @@
 """
 models.py — Seq2Seq architecture (clean from scratch).
 
+Version : 3.2.0
+Date    : 2026-03-18
+
 Components:
   1. create_pretrained_embedding  — loads Phase 1 Stage 8 .npy matrix
   2. Encoder                      — BIDIRECTIONAL 2-layer LSTM (key upgrade)

@@ -1,6 +1,9 @@
 """
 dataset.py — PyTorch Dataset and DataLoader for BPE-tokenised Ubuntu pairs.
 
+Version : 3.2.0
+Date    : 2026-03-18
+
 Reads the JSONL files produced by phase1.py Stage 6.
 Each line: {"ctx": [int, ...], "resp": [int, ...]}
 
@@ -159,6 +162,7 @@ def build_dataloaders(
     )
 
     pin = torch.cuda.is_available()
+    persist = num_workers > 0   # keep workers alive between epochs (avoids respawn overhead)
 
     train_loader = DataLoader(
         train_ds,
@@ -168,6 +172,7 @@ def build_dataloaders(
         collate_fn=_collate,
         num_workers=num_workers,
         pin_memory=pin,
+        persistent_workers=persist,
     )
     val_loader = DataLoader(
         val_ds,
@@ -177,6 +182,7 @@ def build_dataloaders(
         collate_fn=_collate,
         num_workers=num_workers,
         pin_memory=pin,
+        persistent_workers=persist,
     )
     test_loader = DataLoader(
         test_ds,
@@ -186,6 +192,7 @@ def build_dataloaders(
         collate_fn=_collate,
         num_workers=num_workers,
         pin_memory=pin,
+        persistent_workers=persist,
     )
 
     return train_loader, val_loader, test_loader
